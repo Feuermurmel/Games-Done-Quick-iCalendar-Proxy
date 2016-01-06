@@ -14,12 +14,20 @@ class Event:
 	
 	def iter_lines(self):
 		yield 'BEGIN:VEVENT'
-		yield 'DTSTART:{}'.format(self.start.strftime('%Y%m%dT%H%M%SZ'))
-		yield 'DTEND:{}'.format(self.end.strftime('%Y%m%dT%H%M%SZ'))
-		yield 'SUMMARY:{}'.format(self.title)
-		yield 'LOCATION:{}'.format(self.location)
-		yield 'DESCRIPTION:{}'.format(self.notes)
+		yield 'DTSTART:{}'.format(self._encode_time(self.start))
+		yield 'DTEND:{}'.format(self._encode_time(self.end))
+		yield 'SUMMARY:{}'.format(self._encode_string(self.title))
+		yield 'LOCATION:{}'.format(self._encode_string(self.location))
+		yield 'DESCRIPTION:{}'.format(self._encode_string(self.notes))
 		yield 'END:VEVENT'
+	
+	@classmethod
+	def _encode_time(cls, value : datetime.datetime):
+		return value.strftime('%Y%m%dT%H%M%SZ')
+	
+	@classmethod
+	def _encode_string(cls, value : str):
+		return re.sub('([\\\\\n,;])', '\\\\\\1', value)
 
 
 class Calendar:

@@ -1,4 +1,4 @@
-import os, requests, logging, datetime, re
+import os, requests, logging, datetime, re, html
 import wsgiref.util
 import wsgiref.handlers
 import wsgiref.simple_server
@@ -74,13 +74,15 @@ def parse_entries(text : str):
 	
 	def iter_entries():
 		for i in re.finditer(pattern, re.sub('\n', ' ', text)):
-			start = parse_date(i.group('start').strip())
-			name = i.group('name').strip()
-			runners = i.group('runners').strip()
-			estimate = parse_duration(i.group('estimate').strip())
-			category = i.group('category').strip()
-			setup = parse_duration(i.group('setup').strip())
-			notes = i.group('notes').strip()
+			contents = { j: html.unescape(i.group(j).strip()) for j in parts }
+			
+			start = parse_date(contents['start'])
+			name = contents['name']
+			runners = contents['runners']
+			estimate = parse_duration(contents['estimate'])
+			category = contents['category']
+			setup = parse_duration(contents['setup'])
+			notes = contents['notes']
 			
 			if category:
 				title = '{} ({})'.format(name, category)

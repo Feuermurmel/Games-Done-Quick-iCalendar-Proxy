@@ -16,7 +16,6 @@ class Event:
 		yield 'BEGIN:VEVENT'
 		yield 'DTSTART:{}'.format(self.start.strftime('%Y%m%dT%H%M%SZ'))
 		yield 'DTEND:{}'.format(self.end.strftime('%Y%m%dT%H%M%SZ'))
-		yield 'TRANSP:OPAQUE'
 		yield 'SUMMARY:{}'.format(self.title)
 		yield 'LOCATION:{}'.format(self.location)
 		yield 'DESCRIPTION:{}'.format(self.notes)
@@ -29,7 +28,6 @@ class Calendar:
 	
 	def iter_lines(self):
 		yield 'BEGIN:VCALENDAR'
-		yield 'METHOD:PUBLISH'
 		yield 'VERSION:2.0'
 		yield 'CALSCALE:GREGORIAN'
 		

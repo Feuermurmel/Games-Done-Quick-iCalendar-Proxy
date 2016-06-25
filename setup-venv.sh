@@ -11,3 +11,5 @@ virtualenv -p python3 "$VENV_PATH"
 . "$VENV_PATH/bin/activate"
 
 pip install requests
+pip install bs4
+pip install python-dateutil

@@ -1,11 +1,14 @@
-import os, requests, logging, datetime, re, html
+import os, requests, logging, datetime, re, html, bs4, dateutil.parser
 import wsgiref.util
 import wsgiref.handlers
 import wsgiref.simple_server
 
+from bs4 import BeautifulSoup
+
 
 class Event:
-	def __init__(self, start : datetime.datetime, end : datetime.datetime, title : str, location : str, notes : str):
+	def __init__(self, start: datetime.datetime, end: datetime.datetime,
+			title: str, location: str, notes: str):
 		self.start = start
 		self.end = end
 		self.title = title
@@ -22,16 +25,16 @@ class Event:
 		yield 'END:VEVENT'
 	
 	@classmethod
-	def _encode_time(cls, value : datetime.datetime):
+	def _encode_time(cls, value: datetime.datetime):
 		return value.strftime('%Y%m%dT%H%M%SZ')
 	
 	@classmethod
-	def _encode_string(cls, value : str):
+	def _encode_string(cls, value: str):
 		return re.sub('([\\\\\n,;])', '\\\\\\1', value)
 
 
 class Calendar:
-	def __init__(self, events : list):
+	def __init__(self, events: list):
 		self.events = events
 	
 	def iter_lines(self):
@@ -50,13 +53,10 @@ def get_calendar():
 	
 	result = requests.get('https://gamesdonequick.com/schedule')
 	
-	assert result.headers['content-type'].split(';')[0].strip().lower() == 'text/html'
+	assert result.headers['content-type'].split(';', 1)[
+		       0].strip().lower() == 'text/html'
 	
 	return result.text
-
-
-def parse_date(string):
-	return datetime.datetime.strptime(string, '%Y-%m-%dT%H:%M:%SZ')
 
 
 def parse_duration(string):
@@ -65,38 +65,35 @@ def parse_duration(string):
 	return datetime.timedelta(hours = h, minutes = m, seconds = s)
 
 
-def parse_entries(text : str):
-	parts = 'start name runners estimate category setup notes'.split()
-	
-	def iter_pattern_parts():
-		yield '<tr>'
-		
-		for i in parts:
-			yield '<td(\s+class="[^"]*")?>(?P<{}>[^<]*)</td>'.format(i)
-		
-		yield '</tr>'
-	
-	pattern = '\s*'.join(iter_pattern_parts())
-	
+def get_cell_contents(row):
+	return [i.text for i in row.find_all('td')]
+
+
+def parse_entries(text: str):
+	soup = BeautifulSoup(text, 'html.parser')
+
+	schedule_table = soup.find(id='runTable')
+
 	def iter_entries():
-		for i in re.finditer(pattern, re.sub('\n', ' ', text)):
-			contents = { j: html.unescape(i.group(j).strip()) for j in parts }
-			
-			start = parse_date(contents['start'])
-			name = contents['name']
-			runners = contents['runners']
-			estimate = parse_duration(contents['estimate'])
-			category = contents['category']
-			setup = parse_duration(contents['setup'])
-			notes = contents['notes']
-			
-			if category:
-				title = '{} ({})'.format(name, category)
-			else:
-				title = name
-			
-			yield Event(start, start + estimate, title, runners, notes)
-	
+		for row in schedule_table.tbody.find_all('tr'):
+			if 'second-row' not in row.get('class', []):
+				second_row = row.find_next_sibling('tr')
+
+				if second_row:
+					start_str, name, runners, setup = get_cell_contents(row)
+					estimate_str, category = get_cell_contents(second_row)
+
+					start = dateutil.parser.parse(start_str)
+					estimate = parse_duration(estimate_str)
+					notes = '' # Where is this?
+
+					if category:
+						title = '{} ({})'.format(name, category)
+					else:
+						title = name
+
+					yield Event(start, start + estimate, title, runners, notes)
+
 	return Calendar(list(iter_entries()))
 
 
